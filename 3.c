@@ -1,4 +1,6 @@
-//TODO process: int *processNumber
+//TODO isvalid N
+//TODO maybe optimize findSeq
+
 
 #include <stdio.h>
 #include <unistd.h>
@@ -8,6 +10,8 @@
 #include <dirent.h>
 #include <string.h>
 #include <stdlib.h>
+#include <sys/wait.h>
+#include <errno.h>
 
 
 int dirWalk(char *path, int nProcesses, char *seq);
@@ -32,7 +36,39 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 	
-	int N = strtol(argv[3], NULL, 10);
+		
+		char *endptr;
+		int N;		
+		N = strtol(argv[3], &endptr, 10);
+		if (errno == ERANGE)
+		{
+			perror("error m5: cannot convert");
+			return 5;
+		}
+		
+		puts("!");
+		
+		if (endptr[0] != '\0' && argv[3][0] != '\0')
+		{
+			printf("Do you mean %d? [y]", N);
+			int c;
+			if ((c = getc(stdin)) != 'y')
+			{
+				fprintf(stderr, "error m6: cannot convert(N must be full correct)");
+				return 6;
+			}
+		}
+		
+		endptr = NULL;
+		
+		if (N <= 0)
+		{
+			fprintf(stderr, "error m4: max count of processes-children must be a positive value\n");
+			return 4;
+		}
+		
+		
+		
 	
 	int nFound = dirWalk(absPath, N, argv[1]);
 	
@@ -42,7 +78,15 @@ int main(int argc, char *argv[])
 		return 2;
 	}
 	
-	printf("nFound = %d\n", nFound);
+	
+	int wstatus;
+	for (int i = 0; i < N; ++i)
+		if (waitpid(-1, &wstatus, 0) == -1)
+			perror("error m3: wait() failed at the end");
+		else
+			nFound += WEXITSTATUS(wstatus);
+	
+	printf("======================\nTotal = %d\n", nFound);
 	
 	return 0;
 }
@@ -70,7 +114,7 @@ char *getAbsPath (char *relPath)
 
 int dirWalk(char *path, int maxnProcesses, char *seq)
 {
-	static int nProcesses = 1;
+	static int nProcesses = 0;
 	DIR *curDir;
 	int nFound = 0;
 	int addFound = 0;	
@@ -113,20 +157,28 @@ int dirWalk(char *path, int maxnProcesses, char *seq)
 		else if (dire->d_type == DT_REG)
 		{		
 			//create process	
-			if (nProcesses > maxnProcesses)
+			if (nProcesses >= maxnProcesses)
 			{
-				int wstatus;
-				wait(&wstatus);				
+				int wstatus;		
+				if (waitpid(-1, &wstatus, 0) == -1)
+				{
+					fprintf(stderr, "error dW5: wait() failed at '%s'", newPath);
+					perror(" ");				
+					continue;	
+				}
+				addFound = WEXITSTATUS(wstatus);
+
+				nFound += addFound;				
+				--nProcesses;	
 			}
-							
-			if ((addFound = createChildProcesses(&nProcesses, seq, newPath)) < 0)
+			
+			
+			if ((createChildProcesses(&nProcesses, newPath, seq)) < 0)
 			{
-				fprintf(stderr, "error dw4: findSeq() failed at '%s'", newPath);
-				perror("");
+				fprintf(stderr, "error dw4: createChildProcesses() failed at '%s'", newPath);
+				perror(" ");
 				continue;
 			}
-
-			nFound += addFound;
 		}
 		
 	}	
@@ -135,7 +187,7 @@ int dirWalk(char *path, int maxnProcesses, char *seq)
 	if (closedir(curDir))
 	{
 		fprintf(stderr, "error dW2: closedir() failed at  '%s'", path);
-		perror("");
+		perror(" ");
 		return -2;
 	}
 	
@@ -159,11 +211,11 @@ int findSeq(char *seq, char* fileName)
 	FILE *file;
 	if (!(file = fopen(fileName, "rb")))
 	{
-		perror("error fS1 : fopen() failed");
+		fprintf(stderr, "error fS1 : fopen() failed at %s", fileName);
+		perror("");
 		free(buffer);
 		return -1;
 	}
-	
 	
 	
 	int nFound = 0;
@@ -206,16 +258,15 @@ int createChildProcesses(int *processNumber, char *fileName, char *seq)
 	case 0:
 		nFound = findSeq(seq, fileName);
 		if (nFound >= 0)
-			printf("pid = %d\t№ = %d\n%s\nFound = %d\n\n", getpid(), *processNumber, fileName, nFound);
-		return nFound;
+			printf("pid = %d\t№ = %d\n%s\nFound = %d\n\n", getpid(), 1 + *processNumber, fileName, nFound);
+		
+		_exit(nFound);
 			
 	default: 
 		++(*processNumber);
 		return 0;		
 	}	
 }
-
-
 
 
 

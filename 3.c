@@ -1,4 +1,3 @@
-//TODO isvalid N
 //TODO maybe optimize findSeq
 
 
@@ -13,10 +12,11 @@
 #include <sys/wait.h>
 #include <errno.h>
 
+#define BLK_SIZE 512
 
 int dirWalk(char *path, int nProcesses, char *seq);
 char *getAbsPath (char *relPath);
-int findSeq(char *seq, char *fileName);
+int findSeq(char *seq, char *fileName, int *byteLook);
 int createChildProcesses(int *processNumber, char *fileName, char *seq);
 
 
@@ -46,7 +46,6 @@ int main(int argc, char *argv[])
 			return 5;
 		}
 		
-		puts("!");
 		
 		if (endptr[0] != '\0' && argv[3][0] != '\0')
 		{
@@ -68,26 +67,25 @@ int main(int argc, char *argv[])
 		}
 		
 		
-		
-	
-	int nFound = dirWalk(absPath, N, argv[1]);
-	
-	if (nFound < 0)
+	int nFilesFound = dirWalk(absPath, N, argv[1]);
+	if (nFilesFound < 0)
 	{
 		perror("error m2 : dirWalk() failed");
 		return 2;
 	}
 	
-	
 	int wstatus;
 	for (int i = 0; i < N; ++i)
 		if (waitpid(-1, &wstatus, 0) == -1)
 			perror("error m3: wait() failed at the end");
-		else
-			nFound += WEXITSTATUS(wstatus);
+		else if (WIFEXITED(wstatus))
+			if (WEXITSTATUS(wstatus) == 1)
+				++nFilesFound;
+			else if (WEXITSTATUS(wstatus))			
+				perror("error m7: child process terminated unsuccessfully");
+		
 	
-	printf("======================\nTotal = %d\n", nFound);
-	
+	printf("\n======================================\nCount Files Found = %d\n", nFilesFound);
 	return 0;
 }
 
@@ -115,9 +113,9 @@ char *getAbsPath (char *relPath)
 int dirWalk(char *path, int maxnProcesses, char *seq)
 {
 	static int nProcesses = 0;
+	int nFilesFound = 0;
+	int add_nFilesFound = 0;
 	DIR *curDir;
-	int nFound = 0;
-	int addFound = 0;	
 
 	if (!(curDir = opendir(path)))
 	{
@@ -146,13 +144,14 @@ int dirWalk(char *path, int maxnProcesses, char *seq)
 		
 		if (dire->d_type == DT_DIR) 
 		{			
-			if ((addFound = dirWalk(newPath, nProcesses, seq)) < 0)
+		
+			if ((add_nFilesFound = dirWalk(newPath, maxnProcesses, seq)) < 0)
 			{
 				fprintf(stderr, "error dW3: dirWalk() failed at '%s'", newPath);
 				perror("");
 				continue;
 			}
-			nFound += addFound;
+			nFilesFound += add_nFilesFound;
 		}
 		else if (dire->d_type == DT_REG)
 		{		
@@ -165,13 +164,15 @@ int dirWalk(char *path, int maxnProcesses, char *seq)
 					fprintf(stderr, "error dW5: wait() failed at '%s'", newPath);
 					perror(" ");				
 					continue;	
-				}
-				addFound = WEXITSTATUS(wstatus);
-
-				nFound += addFound;				
+				}				
+				else if (WIFEXITED(wstatus))
+					if (WEXITSTATUS(wstatus) == 1)
+						++nFilesFound;
+					else if (WEXITSTATUS(wstatus))
+						perror("error dW6: child process terminated unsuccessfully");
+						
 				--nProcesses;	
 			}
-			
 			
 			if ((createChildProcesses(&nProcesses, newPath, seq)) < 0)
 			{
@@ -191,12 +192,11 @@ int dirWalk(char *path, int maxnProcesses, char *seq)
 		return -2;
 	}
 	
-	return nFound;	
+	return nFilesFound;	
 }
 
 
-
-int findSeq(char *seq, char* fileName)
+int findSeq(char *seq, char* fileName, int *byteLook)
 {
 	const int sizeSeq = strlen(seq);
 	
@@ -220,20 +220,30 @@ int findSeq(char *seq, char* fileName)
 	
 	int nFound = 0;
 	long int offset = 0;	
+	char flagFirst = 1;
 	
-
+	*byteLook = 0;
 	while (!feof(file))
 	{
 		if (fseek(file, offset, SEEK_SET))
-			perror("error fS4 : fseek() failed");			
-			
-		fread(buffer, 1, sizeSeq, file);
+			perror("error fS4 : fseek() failed");
 		
-		++offset;
-		
+		if (flagFirst)
+		{		
+			*byteLook = fread(buffer, 1, sizeSeq, file);
+			flagFirst = 0;
+		}
+		else
+		{
+			fread(buffer, 1, sizeSeq, file);
+			++(*byteLook);
+		}
+
 		if (strcmp(buffer, seq) == 0)
-			++nFound;
-	}	
+			++nFound;				
+		++offset;				
+	} 	
+	
 	
 	free(buffer);
 		
@@ -250,23 +260,23 @@ int createChildProcesses(int *processNumber, char *fileName, char *seq)
 {
 	pid_t cpid = fork();
 	int nFound;
+	int nBytesLook;
 
 	switch(cpid)
 	{
 	case -1: return -1;
 	
 	case 0:
-		nFound = findSeq(seq, fileName);
+		nFound = findSeq(seq, fileName, &nBytesLook);
 		if (nFound >= 0)
-			printf("pid = %d\t№ = %d\n%s\nFound = %d\n\n", getpid(), 1 + *processNumber, fileName, nFound);
+			printf("pid = %d\tActive Processes = %d\t %s \tFound = %d\t Bytes Looked = %d\n\n", getpid(), 1 + *processNumber, fileName, nFound, nBytesLook);
 		
-		_exit(nFound);
+		_exit(!!nFound);
 			
 	default: 
 		++(*processNumber);
 		return 0;		
 	}	
 }
-
 
 

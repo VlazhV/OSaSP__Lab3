@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <sys/wait.h> 
 
-void createChildren0_0(int nChild)
+void createChildProcesses(int nChild)
 {
 	if (nChild < 1)
 		return;
@@ -16,13 +16,14 @@ void createChildren0_0(int nChild)
 		perror("fork() failed");
 		return;
 	case 0:
-		printf("CHILD: my pid is %d\n", getpid());
-		printf("CHILD: my parent's pid is %d\n", getppid());
-//		printf("CHILD: ");
-		system("date -u");
-		return;
+		printf("CHILD : my pid is %d\t my parent's pid is %d\n",getpid(), getppid()); 		
+		printf("CHILD %d:\n", getpid());		
+		system("date");
+
+		_exit(0);
 	default:
-		createChildren0_0(nChild - 1);
+//		sleep(1);
+		createChildProcesses(nChild - 1);
 		return;
 	}
 	
@@ -31,10 +32,26 @@ void createChildren0_0(int nChild)
 int main()
 {
 	int nProcs = 2;
-	createChildren0_0(nProcs);
+	createChildProcesses(nProcs);
 	
-	int *ws;
-	wait(ws);
 
+	printf("PARENT : my pid is %d\t my parent's pid is %d\n",getpid(), getppid()); 		
+	printf("PARENT %d:\n", getpid());		
+	system("date");
+
+	system("ps -x");	
+		
+	int ws;
+	pid_t pid;
+	if ( (pid = waitpid(-1, &ws, 0)) == -1)
+		perror("error m1; waitpid() failed");		
+	else if (WIFEXITED(ws))
+		if (WEXITSTATUS(ws))
+		{
+			fprintf(stderr, "error m2: child process(%d) terminated  unsuccessfully", pid);
+			perror(" ");
+		}
+
+	
 	return 0;
 }

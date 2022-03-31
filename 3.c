@@ -1,4 +1,4 @@
-//TODO maybe optimize findSeq
+
 
 
 #include <stdio.h>

@@ -20,7 +20,8 @@ void createChildProcesses(int nChild)
 	case 0:
 		printf("CHILD : my pid is %d\t my parent's pid is %d\n",getpid(), getppid()); 		
 		printf("CHILD %d:\n", getpid());		
-		system("date");
+		//system("date");
+		system("./2.sh");
 
 		_exit(0);
 	default:
@@ -39,7 +40,8 @@ int main()
 
 	printf("PARENT : my pid is %d\t my parent's pid is %d\n",getpid(), getppid()); 		
 	printf("PARENT %d:\n", getpid());		
-	system("date");
+//	system("date");
+	system("./2.sh");
 
 	system("ps -x");	
 		

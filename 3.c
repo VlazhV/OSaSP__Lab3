@@ -153,7 +153,7 @@ int dirWalk(char *path, int maxnProcesses, char *seq)
 			}
 			nFilesFound += add_nFilesFound;
 		}
-		else if (dire->d_type == DT_REG)
+		else if (dire->d_type == DT_REG && dire->d_type != DT_LNK)
 		{		
 			//create process	
 			if (nProcesses >= maxnProcesses)

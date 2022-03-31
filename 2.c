@@ -5,29 +5,39 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <sys/wait.h> 
+#include <time.h>
 
-void createChildProcesses(int nChild)
+#define TIME_MAX 12
+char *myTime(char *tmBuf)
+{
+	struct timespec mtime;
+	clock_gettime(CLOCK_REALTIME, &mtime);
+	
+	struct tm *hms = localtime(&(mtime.tv_sec));
+	tmBuf = (char *) calloc(TIME_MAX, 1);
+	sprintf(tmBuf, "%d:%d:%d:%d", hms->tm_hour, hms->tm_min, hms->tm_sec, (int)mtime.tv_nsec/1000000);
+
+	return tmBuf;
+}
+
+int createChildProcesses(int nChild, char *tmBuf)
 {
 	if (nChild < 1)
-		return;
+		return 0;
 	pid_t p = fork();
 	
 	switch(p)
 	{
 	case -1:
 		perror("fork() failed");
-		return;
+		return -1;
 	case 0:
-		printf("CHILD : my pid is %d\t my parent's pid is %d\n",getpid(), getppid()); 		
-		printf("CHILD %d:\n", getpid());		
-		//system("date");
-		system("./2.sh");
-
+		printf("CHILD : my pid is %d\t my parent's pid is %d\t%s\n",getpid(), getppid(), myTime(tmBuf)); 				
 		_exit(0);
 	default:
-//		sleep(1);
-		createChildProcesses(nChild - 1);
-		return;
+
+		createChildProcesses(nChild - 1, tmBuf);
+		return 0;
 	}
 	
 }
@@ -35,26 +45,31 @@ void createChildProcesses(int nChild)
 int main()
 {
 	int nProcs = 2;
-	createChildProcesses(nProcs);
+ 	char *tmBuf;
+	
+	if (createChildProcesses(nProcs, tmBuf) == -1)
+	{
+		perror("error m3 : cannot create child process");
+		return 3;
+	}
 	
 
-	printf("PARENT : my pid is %d\t my parent's pid is %d\n",getpid(), getppid()); 		
-	printf("PARENT %d:\n", getpid());		
-//	system("date");
-	system("./2.sh");
+	printf("PARENT : my pid is %d\t my parent's pid is %d\t%s\n",getpid(), getppid(), myTime(tmBuf));
+	
+	system("ps -x");
 
-	system("ps -x");	
 		
 	int ws;
 	pid_t pid;
-	if ( (pid = waitpid(-1, &ws, 0)) == -1)
-		perror("error m1; waitpid() failed");		
-	else if (WIFEXITED(ws))
-		if (WEXITSTATUS(ws))
-		{
-			fprintf(stderr, "error m2: child process(%d) terminated  unsuccessfully", pid);
-			perror(" ");
-		}
+	for (int i = 0; i < nProcs; ++i)
+		if ( (pid = waitpid(-1, &ws, 0)) == -1)
+			perror("error m1; waitpid() failed");		
+		else if (WIFEXITED(ws))
+			if (WEXITSTATUS(ws))
+			{
+				fprintf(stderr, "error m2: child process(%d) terminated  unsuccessfully", pid);
+				perror(" ");
+			}
 
 	
 	return 0;

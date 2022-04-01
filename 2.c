@@ -1,4 +1,4 @@
-//TODO hh : MM : ss : ms
+
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -10,13 +10,31 @@
 #define TIME_MAX 12
 char *myTime(char *tmBuf)
 {
+	if (!tmBuf)
+	{
+		perror("error mT1: myTime(null)");
+		return NULL;
+	}
+	
 	struct timespec mtime;
-	clock_gettime(CLOCK_REALTIME, &mtime);
+	if (clock_gettime(CLOCK_REALTIME, &mtime) < 0)
+	{
+		perror("error mT3 : clock_gettime() failed");
+		return NULL;
+	}
 	
 	struct tm *hms = localtime(&(mtime.tv_sec));
-	tmBuf = (char *) calloc(TIME_MAX, 1);
-	sprintf(tmBuf, "%d:%d:%d:%d", hms->tm_hour, hms->tm_min, hms->tm_sec, (int)mtime.tv_nsec/1000000);
-
+	if (!hms)
+	{
+		perror("error mT4: localtime() failed");
+		return NULL;
+	}
+		
+	if (sprintf(tmBuf, "%d:%d:%d:%d", hms->tm_hour, hms->tm_min, hms->tm_sec, (int)mtime.tv_nsec/1000000) < 0)
+	{
+		perror("error mT2 : sprintf() failed");
+		return NULL;
+	}
 	return tmBuf;
 }
 
@@ -32,7 +50,7 @@ int createChildProcesses(int nChild, char *tmBuf)
 		perror("fork() failed");
 		return -1;
 	case 0:
-		printf("CHILD : my pid is %d\t my parent's pid is %d\t%s\n",getpid(), getppid(), myTime(tmBuf)); 				
+		printf("CHILD : my pid is %d\t my parent's pid is %d\t%s\n",getpid(), getppid(), myTime(tmBuf) != NULL ? tmBuf : "time error"); 				
 		_exit(0);
 	default:
 
@@ -46,15 +64,19 @@ int main()
 {
 	int nProcs = 2;
  	char *tmBuf;
-	
+ 	if (!(tmBuf = (char *)calloc(TIME_MAX, 1)))
+ 	{
+ 		perror("error m4: calloc() failed");
+ 		return 4;
+ 	}
+ 	
 	if (createChildProcesses(nProcs, tmBuf) == -1)
 	{
 		perror("error m3 : cannot create child process");
 		return 3;
 	}
-	
 
-	printf("PARENT : my pid is %d\t my parent's pid is %d\t%s\n",getpid(), getppid(), myTime(tmBuf));
+	printf("PARENT : my pid is %d\t my parent's pid is %d\t%s\n",getpid(), getppid(), myTime(tmBuf) != NULL ? tmBuf : "time error");
 	
 	system("ps -x");
 

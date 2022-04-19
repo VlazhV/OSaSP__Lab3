@@ -30,7 +30,7 @@ int main(int argc, char *argv[])
 
 	
 	char *absPath;
-	absPath = getAbsPath(argv[2])
+	absPath = getAbsPath(argv[2]);
 	if (!absPath)
 	{
 		perror("error m1 : getAbsPath() failed");
@@ -125,7 +125,7 @@ int dirWalk(char *path, int maxnProcesses, char *seq)
 		return -1;
 	}
 	
-	char *newPat = (char*)calloc(PATH_MAX, 1);
+	char *newPath = (char*)calloc(PATH_MAX, 1);
 	if (!newPath)
 	{
 		fprintf(stderr, "error dW5: no memory at '%s'", path);
@@ -223,7 +223,7 @@ int findSeq(char *seq, char* fileName, int *byteLook)
 	long int offset = 0;	
 	char flagFirst = 1;
 	
-	*byteLook = 0;
+	*byteLook = -1;
 	while (!feof(file))
 	{
 		if (fseek(file, offset, SEEK_SET))

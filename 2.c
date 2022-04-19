@@ -84,7 +84,9 @@ int main()
 	int ws;
 	pid_t pid;
 	for (int i = 0; i < nProcs; ++i)
-		if ( (pid = waitpid(-1, &ws, 0)) == -1)
+	{
+		pid = waitpid(-1,&ws, 0);
+		if ( pid  == -1 )
 			perror("error m1; waitpid() failed");		
 		else if (WIFEXITED(ws))
 			if (WEXITSTATUS(ws))
@@ -92,6 +94,7 @@ int main()
 				fprintf(stderr, "error m2: child process(%d) terminated  unsuccessfully", pid);
 				perror(" ");
 			}
+	}
 
 	
 	return 0;

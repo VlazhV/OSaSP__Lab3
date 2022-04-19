@@ -30,7 +30,8 @@ int main(int argc, char *argv[])
 
 	
 	char *absPath;
-	if (!(absPath = getAbsPath(argv[2])))
+	absPath = getAbsPath(argv[2])
+	if (!absPath)
 	{
 		perror("error m1 : getAbsPath() failed");
 		return 1;
@@ -115,17 +116,17 @@ int dirWalk(char *path, int maxnProcesses, char *seq)
 	static int nProcesses = 0;
 	int nFilesFound = 0;
 	int add_nFilesFound = 0;
-	DIR *curDir;
+	DIR *curDir = opendir(path);
 
-	if (!(curDir = opendir(path)))
+	if (!curDir)
 	{
 		fprintf(stderr, "error dW1: opendir() failed at  '%s'", path);
 		perror("");
 		return -1;
 	}
 	
-	char *newPath;
-	if (!(newPath = (char*)calloc(PATH_MAX, 1)))
+	char *newPat = (char*)calloc(PATH_MAX, 1);
+	if (!newPath)
 	{
 		fprintf(stderr, "error dW5: no memory at '%s'", path);
 		perror("");
@@ -144,8 +145,8 @@ int dirWalk(char *path, int maxnProcesses, char *seq)
 		
 		if (dire->d_type == DT_DIR) 
 		{			
-		
-			if ((add_nFilesFound = dirWalk(newPath, maxnProcesses, seq)) < 0)
+			add_nFilesFound = dirWalk(newPath, maxnProcesses, seq);
+			if (add_nFilesFound < 0)
 			{
 				fprintf(stderr, "error dW3: dirWalk() failed at '%s'", newPath);
 				perror("");
@@ -200,16 +201,16 @@ int findSeq(char *seq, char* fileName, int *byteLook)
 {
 	const int sizeSeq = strlen(seq);
 	
-	char *buffer;
-	if (!(buffer = (char *)calloc(sizeSeq, 1)))
+	char *buffer = (char *)calloc(sizeSeq, 1);
+	if (!buffer)
 	{
 		perror("error fS3 : calloc() failed");
 		return -3;
 	}
 	
 	
-	FILE *file;
-	if (!(file = fopen(fileName, "rb")))
+	FILE *file = fopen(fileName, "rb");
+	if (!file)
 	{
 		fprintf(stderr, "error fS1 : fopen() failed at %s", fileName);
 		perror("");

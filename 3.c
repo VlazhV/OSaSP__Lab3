@@ -49,14 +49,10 @@ int main(int argc, char *argv[])
 		
 		
 		if (endptr[0] != '\0' && argv[3][0] != '\0')
-		{
-			printf("Do you mean %d? [y]", N);
-			int c;
-			if ((c = getc(stdin)) != 'y')
-			{
-				fprintf(stderr, "error m6: cannot convert(N must be full correct)");
-				return 6;
-			}
+		{		
+			fprintf(stderr, "error m6: cannot convert(N must be full correct)\n");
+			return 6;
+			
 		}
 		
 		endptr = NULL;
@@ -67,7 +63,7 @@ int main(int argc, char *argv[])
 			return 4;
 		}
 		
-		
+
 	int nFilesFound = dirWalk(absPath, N, argv[1]);
 	if (nFilesFound < 0)
 	{

@@ -63,8 +63,8 @@ int createChildProcesses(int nChild, char *tmBuf)
 int main()
 {
 	int nProcs = 2;
- 	char *tmBuf;
- 	if (!(tmBuf = (char *)calloc(TIME_MAX, 1)))
+ 	char *tmBuf = (char *)calloc(TIME_MAX, 1);
+ 	if (!tmBuf)
  	{
  		perror("error m4: calloc() failed");
  		return 4;
@@ -96,6 +96,6 @@ int main()
 			}
 	}
 
-	
+	free(tmBuf);	
 	return 0;
 }

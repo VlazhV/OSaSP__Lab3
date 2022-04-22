@@ -48,12 +48,17 @@ int main(int argc, char *argv[])
 		}
 		
 		
-		if (endptr[0] != '\0') 
+		if (endptr[0] != '\0')
 		{		
 			fprintf(stderr, "error m6: cannot convert(N must be full correct)\n");
-			return 6;
-			
+			return 6;	
 		}
+		else if (endptr - argv[3] == 0)
+		{
+			fprintf(stderr, "error m6: cannot convert(N must be full correct)\n");
+			return 6;	
+		}
+		
 		
 		endptr = NULL;
 		
